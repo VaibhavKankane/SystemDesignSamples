@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "ExternalClient": {
+      "commandName": "Project"
+    },
+    "Docker": {
+      "commandName": "Docker"
+    }
+  }
+}

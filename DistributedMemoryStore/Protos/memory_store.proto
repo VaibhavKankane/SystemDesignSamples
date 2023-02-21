@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+option csharp_namespace = "MemoryStore";
+
+package memorystore;
+
+service MemoryStore {
+  rpc Read (ReadRequest) returns (ReadResponse);
+  rpc Write (WriteRequest) returns (WriteResponse);
+  rpc Delete (DeleteRequest) returns (DeleteResponse);
+}
+
+//-----------------------------
+enum ErrorCode {
+  UNKNOWN = 0;
+  NOT_FOUND = 1;
+  KEY_EXISTS = 2;
+  NOT_LEADER = 3;
+  ReplicationFailed = 4;
+}
+
+message ResponseStatus{
+  bool Success = 1;
+  ErrorCode error_code = 2;
+}
+//-----------------------------
+
+message ReadRequest {
+  string key = 1;
+}
+
+message ReadResponse {
+  string value = 1;
+  ResponseStatus status = 2;
+}
+//-----------------------------
+
+message WriteRequest {
+  string key = 1;
+  string value = 2;
+}
+
+message WriteResponse {
+  ResponseStatus status = 1;
+}
+//-----------------------------
+
+message DeleteRequest {
+  string key = 1;
+}
+
+message DeleteResponse {
+  ResponseStatus status = 1;
+}
+//-----------------------------
