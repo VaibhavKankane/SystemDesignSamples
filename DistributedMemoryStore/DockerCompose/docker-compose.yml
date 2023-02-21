@@ -16,6 +16,32 @@ services:
 
   externalclient:
      image:  ${DOCKER_REGISTRY-}externalclient
+     ports:
+       - 1234:1234
+     environment:
+       - MetricsPort=1234
+       - ASPNETCORE_URLS=http://*:1234 #Prometheus aspnet core package uses this
      build:
       context: .
       dockerfile: ../ExternalClient/Dockerfile
+
+  prometheus:
+    image: prom/prometheus
+    restart: always
+    ports:
+      - 9090:9090
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      # - prometheus_data:/prometheus/data
+
+  grafana: 
+    image: grafana/grafana
+    depends_on:
+      - prometheus
+    #command:
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=pass
+    restart: always
+    ports:
+      - 3000:3000
+

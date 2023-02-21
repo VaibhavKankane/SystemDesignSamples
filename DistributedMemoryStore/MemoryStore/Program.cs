@@ -1,5 +1,6 @@
 using MemoryStore.Services;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Prometheus;
 using System.Net;
 
 namespace MemoryStore
@@ -19,9 +20,39 @@ namespace MemoryStore
 
         private static void ConfigureApplication(WebApplication app)
         {
+            // Enable routing, which is necessary to both:
+            // 1) capture metadata about gRPC requests, to add to the labels.
+            // 2) expose /metrics in the same pipeline.
+            app.UseRouting();
+
             // Configure the HTTP request pipeline.
             app.MapGrpcService<MemoryStoreService>();
+            ConfigurePrometheusMetrics(app);
+
             app.MapGet("/", () => "Communication with gRPC endpoints must be made through a gRPC client. To learn how to create a client, visit: https://go.microsoft.com/fwlink/?linkid=2086909");
+        }
+
+        private static void ConfigurePrometheusMetrics(WebApplication app)
+        {
+            // Capture metrics about received gRPC requests.
+            app.UseGrpcMetrics();
+
+            // Capture metrics about received HTTP requests.
+            app.UseHttpMetrics();
+
+            app.UseEndpoints(endpoints =>
+            {
+                // Enable the /metrics page to export Prometheus metrics.
+                // Open http://localhost:8082/metrics to see the metrics.
+                //
+                // Metrics published in this sample:
+                // * built-in process metrics giving basic information about the .NET runtime (enabled by default)
+                // * metrics from .NET Event Counters (enabled by default)
+                // * metrics from .NET Meters (enabled by default)
+                // * metrics about HTTP requests handled by the web app (configured above)
+                // * metrics about gRPC requests handled by the web app (configured above)
+                endpoints.MapMetrics();
+            });
         }
 
         private static void ConfigureBuilder(WebApplicationBuilder builder)
