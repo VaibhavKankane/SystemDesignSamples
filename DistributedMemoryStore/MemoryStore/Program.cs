@@ -3,6 +3,7 @@ using MemoryStore.Services;
 using MemoryStore.WAL;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Prometheus;
+using Serilog;
 using System.Net;
 
 namespace MemoryStore
@@ -12,6 +13,13 @@ namespace MemoryStore
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+            Log.Logger = new LoggerConfiguration()
+                              .WriteTo.Console()
+                              .WriteTo.Seq("http://seq")
+                              .CreateLogger();
+
+            builder.Host.UseSerilog(); 
+            
             ConfigureBuilder(builder);
 
             var app = builder.Build();
@@ -22,6 +30,8 @@ namespace MemoryStore
 
         private static void ConfigureApplication(WebApplication app)
         {
+            app.UseSerilogRequestLogging();
+
             // Enable routing, which is necessary to both:
             // 1) capture metadata about gRPC requests, to add to the labels.
             // 2) expose /metrics in the same pipeline.
