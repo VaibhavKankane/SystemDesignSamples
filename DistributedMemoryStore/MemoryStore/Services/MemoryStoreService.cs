@@ -1,4 +1,5 @@
 using Grpc.Core;
+using MemoryStore.RequestQueue;
 using Microsoft.AspNetCore.DataProtection.KeyManagement;
 
 namespace MemoryStore.Services
@@ -6,10 +7,12 @@ namespace MemoryStore.Services
     public class MemoryStoreService : MemoryStore.MemoryStoreBase
     {
         private readonly IMemoryStore _memoryStore;
+        private readonly IRequestProcessorQueue _requestQueue;
 
-        public MemoryStoreService(IMemoryStore memoryStore)
+        public MemoryStoreService(IMemoryStore memoryStore, IRequestProcessorQueue requestQueue)
         {
             _memoryStore = memoryStore;
+            _requestQueue = requestQueue;
         }
 
         public override Task<ReadResponse> Read(ReadRequest request, ServerCallContext context)
@@ -33,46 +36,27 @@ namespace MemoryStore.Services
             return Task.FromResult(response);
         }
 
-        public override Task<WriteResponse> Write(WriteRequest request, ServerCallContext context)
+        public override async Task<WriteResponse> Write(WriteRequest request, ServerCallContext context)
         {
-            var status = new ResponseStatus();
-
-            var result = _memoryStore.Add(request.Key, request.Value);
-
-            if (result == MemoryStoreOperationResult.Success)
-                status.Success = true;
-            else
-            {
-                status.Success = false;
-                status.ErrorCode = ErrorCode.KeyExists;
-            }
+            var status = await _requestQueue.ProcessInQueue(request);
             
             var response = new WriteResponse()
             {
                 Status = status
             };
 
-            return Task.FromResult(response);
+            return response;
         }
 
-        public override Task<DeleteResponse> Delete(DeleteRequest request, ServerCallContext context)
+        public override async Task<DeleteResponse> Delete(DeleteRequest request, ServerCallContext context)
         {
-            var result = _memoryStore.Delete(request.Key);
-            var status = new ResponseStatus();
-
-            if (result == MemoryStoreOperationResult.Success)
-                status.Success = true;
-            else
-            {
-                status.Success = false;
-                status.ErrorCode = ErrorCode.NotFound;
-            }
+            var status = await _requestQueue.ProcessInQueue(request);
 
             var response = new DeleteResponse()
             {
                 Status = status
             };
-            return Task.FromResult(response);
+            return response;
         }
     }
 }

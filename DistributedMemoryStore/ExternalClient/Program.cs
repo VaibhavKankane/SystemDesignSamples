@@ -24,24 +24,46 @@ namespace ExternalClient
             server.Start();
 
             MemoryStoreClient client = GetGrpcClient();
+            await GenerateTraffic(client);
+        }
 
-            string key = "key";
+        private static async Task GenerateTraffic(MemoryStoreClient client)
+        {
+            string baseKey = "key";
+            string key = baseKey;
             int i = 0;
-            Random random = new Random();
-
+            Dictionary<string, string> _dict = new();
+            Random rnd = new Random();
             while (true)
             {
                 try
                 {
-                    key = key + i;
+                    key = baseKey + i;
                     // write 
                     await Write(client, key);
+                    _dict.Add(key, key);
 
-                    // read n times
-                    await Read(client, key);
+                    // validate
+                    var value = await Read(client, key);
+                    if(value == _dict[key])
+                    {
+                        Console.WriteLine("Value returned correctly");
+                    }
+
+                    // validate a random key-val
+                    var n = rnd.Next(0, _dict.Count);
+                    value = await Read(client, _dict.ElementAt(n).Key);
+                    if (value == _dict.ElementAt(n).Value)
+                    {
+                        Console.WriteLine("Value returned correctly");
+                    }
+                    else 
+                    { 
+                        Console.WriteLine("Random check failed for -{0}", _dict.ElementAt(n).Key);
+                    }
                     i++;
 
-                    await Task.Delay(1000);
+                    //await Task.Delay(500);
                 }
                 catch (Grpc.Core.RpcException ex)
                 {
@@ -51,33 +73,31 @@ namespace ExternalClient
                         ex.Status.StatusCode.ToString()
                     };
                     _requestCountByStatus.WithLabels(labelValues.ToArray()).Inc();
-
+                    
                     continue;
                 }
-
             }
         }
 
-        private static async Task Read(MemoryStoreClient client, string key)
+        private static async Task<string> Read(MemoryStoreClient client, string key)
         {
             // make 3 calls for read
-            for (int j = 0; j < 3; j++)
+            ReadRequest readRequest = new ReadRequest();
+            readRequest.Key = key;
+            using (_requestDuration.NewTimer())
             {
-                ReadRequest readRequest = new ReadRequest();
-                readRequest.Key = key;
-                using (_requestDuration.NewTimer())
+                var readResponse = await client.ReadAsync(readRequest);
+                if (readResponse.Status.Success)
                 {
-                    var readResponse = await client.ReadAsync(readRequest);
-                    if (readResponse.Status.Success)
-                    {
-                        _requestCountByStatus.WithLabels(new[] { "Read", "Success" }).Set(1);
-                    }
-                    else
-                    {
-                        _requestCountByStatus.WithLabels(new[] { "Read", readResponse.Status.ErrorCode.ToString() }).Set(1);
-                    }
+                    _requestCountByStatus.WithLabels(new[] { "Read", "Success" }).Set(1);
+                    return readResponse.Value;
+                }
+                else
+                {
+                    _requestCountByStatus.WithLabels(new[] { "Read", readResponse.Status.ErrorCode.ToString() }).Set(1);
                 }
             }
+            return null;
         }
 
         private static async Task Write(MemoryStoreClient client, string key)

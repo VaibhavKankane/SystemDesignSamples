@@ -1,0 +1,19 @@
+﻿syntax = "proto3";
+
+option csharp_namespace = "MemoryStore";
+
+package memorystore;
+
+//-----------------------------
+enum OperationType {
+  INSERT = 0;
+  UPDATE = 1;
+  DELETE= 2;
+}
+
+message WALEntry{
+  int64 SequenceNumber = 1;
+  OperationType OperaionType = 2;
+  string Key = 3;
+  string Value = 4;
+}

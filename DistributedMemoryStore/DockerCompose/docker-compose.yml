@@ -9,6 +9,9 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://*:8080;http://+:8081
+      - WALFilePath=/my/app/wal.dat
+    volumes:
+      - ./:/my/app/
     build:
       # dockerignore file should be in the context directory
       context: .

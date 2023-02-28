@@ -1,4 +1,6 @@
+using MemoryStore.RequestQueue;
 using MemoryStore.Services;
+using MemoryStore.WAL;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Prometheus;
 using System.Net;
@@ -27,6 +29,7 @@ namespace MemoryStore
 
             // Configure the HTTP request pipeline.
             app.MapGrpcService<MemoryStoreService>();
+
             ConfigurePrometheusMetrics(app);
 
             app.MapGet("/", () => "Communication with gRPC endpoints must be made through a gRPC client. To learn how to create a client, visit: https://go.microsoft.com/fwlink/?linkid=2086909");
@@ -77,7 +80,20 @@ namespace MemoryStore
             });
 
             // Add services to the container.
+            var config = new Config();
+            builder.Services.AddSingleton<Config>(config);
             builder.Services.AddSingleton<IMemoryStore, MemoryStoreDictImpl>();
+            builder.Services.AddSingleton<IWriteAheadLogger, WriteAheadLogger>();
+            var serviceCollection = builder.Services.AddSingleton<RestoreFromWAL>();
+
+            builder.Services.AddSingleton<LamportClock>(sp =>
+            {
+                // Restore data from log
+                var restore = sp.GetRequiredService<RestoreFromWAL>();
+                var lastSeqNumber = restore.RestoreMemoryStoreFromLog();
+                return new LamportClock(lastSeqNumber);
+            });
+            builder.Services.AddSingleton<IRequestProcessorQueue, RequestProcessorQueue>();
             builder.Services.AddGrpc();
         }
     }
