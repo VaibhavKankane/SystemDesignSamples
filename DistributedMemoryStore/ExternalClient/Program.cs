@@ -121,7 +121,8 @@ namespace ExternalClient
 
         private static MemoryStoreClient GetGrpcClient()
         {
-            var channel = GrpcChannel.ForAddress("http://host.docker.internal:8083");
+            // address to thick client
+            var channel = GrpcChannel.ForAddress("http://host.docker.internal:5031");
             MemoryStoreClient client = new(channel);
             return client;
         }

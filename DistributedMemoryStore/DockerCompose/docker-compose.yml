@@ -17,6 +17,19 @@ services:
       context: .
       dockerfile: ../MemoryStore/Dockerfile
 
+  thickclient:
+    image: ${DOCKER_REGISTRY-}thickclient
+    ports:
+      - 5030:5030
+      - 5031:5031
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://*:5030;http://+:5031
+    build:
+      # dockerignore file should be in the context directory
+      context: .
+      dockerfile: ../ThickClient/Dockerfile
+
   externalclient:
      image:  ${DOCKER_REGISTRY-}externalclient
      ports:
