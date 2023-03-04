@@ -19,6 +19,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\MemoryStore.Common\MemoryStore.Common.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Protobuf Include="..\Protos\memory_store.proto" />
     <Protobuf Include="WAL\wall_entry.proto" GrpcServices="Server" />
   </ItemGroup>

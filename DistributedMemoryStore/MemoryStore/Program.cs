@@ -1,6 +1,9 @@
+using Google.Protobuf.WellKnownTypes;
+using MemoryStore.Common;
 using MemoryStore.RequestQueue;
 using MemoryStore.Services;
 using MemoryStore.WAL;
+using MemoryStore.ZooKeeper;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Prometheus;
 using Serilog;
@@ -10,10 +13,16 @@ namespace MemoryStore
 {
     public class Program
     {
+        private static Config config;
+
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+            
+            config = new Config();
+            
             Log.Logger = new LoggerConfiguration()
+                              .Enrich.WithProperty("InstanceId", config.InstanceId)
                               .WriteTo.Console()
                               .WriteTo.Seq("http://seq")
                               .CreateLogger();
@@ -23,6 +32,7 @@ namespace MemoryStore
             ConfigureBuilder(builder);
 
             var app = builder.Build();
+
             ConfigureApplication(app);
 
             app.Run();
@@ -90,7 +100,6 @@ namespace MemoryStore
             });
 
             // Add services to the container.
-            var config = new Config();
             builder.Services.AddSingleton<Config>(config);
             builder.Services.AddSingleton<IMemoryStore, MemoryStoreDictImpl>();
             builder.Services.AddSingleton<IWriteAheadLogger, WriteAheadLogger>();
@@ -105,6 +114,19 @@ namespace MemoryStore
             });
             builder.Services.AddSingleton<IRequestProcessorQueue, RequestProcessorQueue>();
             builder.Services.AddGrpc();
+
+            // Zookeeper
+            builder.Services.AddSingleton<ZooKeeperClient>(sp =>
+            {
+                return new ZooKeeperClient(config.ZookeeperConnection,
+                    sp.GetService<ILogger<ZooKeeperClient>>());
+            });
+            builder.Services.AddSingleton<INodeWatcher, ServiceNodeWatcher>();
+            builder.Services.AddSingleton<INodeWriter, ServiceNodeWriter>();
+            //builder.Services.AddSingleton<IReplicationManager, ReplicationManager>();
+            //builder.Services.AddSingleton<Coordinator>();
+
+            builder.Services.AddHostedService<CoordinationService>();
         }
     }
 }

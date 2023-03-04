@@ -16,6 +16,8 @@ Project("{E53339B2-1760-4266-BCC7-CA923CBCF16C}") = "docker-compose", "DockerCom
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ThickClient", "ThickClient\ThickClient.csproj", "{501B43EF-4A85-49B7-A43D-CB87ABAC0750}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MemoryStore.Common", "MemoryStore.Common\MemoryStore.Common.csproj", "{C191EE1D-53EA-4855-8881-F0A54223C27C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -38,6 +40,10 @@ Global
 		{501B43EF-4A85-49B7-A43D-CB87ABAC0750}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{501B43EF-4A85-49B7-A43D-CB87ABAC0750}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{501B43EF-4A85-49B7-A43D-CB87ABAC0750}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C191EE1D-53EA-4855-8881-F0A54223C27C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C191EE1D-53EA-4855-8881-F0A54223C27C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C191EE1D-53EA-4855-8881-F0A54223C27C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C191EE1D-53EA-4855-8881-F0A54223C27C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

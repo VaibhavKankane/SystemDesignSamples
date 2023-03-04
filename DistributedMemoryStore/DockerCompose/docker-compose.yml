@@ -1,7 +1,7 @@
 version: '3.4'
 
 services:
-  memorystore:
+  memorystore1:
     image: ${DOCKER_REGISTRY-}memorystore
     ports:
       - 8082:8080
@@ -9,13 +9,39 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://*:8080;http://+:8081
-      - WALFilePath=/my/app/wal.dat
+      - WALFilePath=/my/app/wal1.dat
+      - InstanceId=1
+      - Host=8083  #This is Http2 endpoint to be registered with zookeeper for grpc
+      - ZK_CONNECTION=zookeeper:2181
     volumes:
       - ./:/my/app/
     build:
       # dockerignore file should be in the context directory
       context: .
       dockerfile: ../MemoryStore/Dockerfile
+    depends_on: 
+      - zoo1
+
+
+  memorystore2:
+    image: ${DOCKER_REGISTRY-}memorystore
+    ports:
+      - 8084:8080
+      - 8085:8081
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://*:8080;http://+:8081
+      - WALFilePath=/my/app/wal2.dat
+      - InstanceId=2
+      - Host=8085  #This is Http2 endpoint to be registered with zookeeper for grpc
+      - ZK_CONNECTION=zookeeper:2181
+    volumes:
+      - ./:/my/app/
+    build:
+      context: .
+      dockerfile: ../MemoryStore/Dockerfile
+    depends_on: 
+      - zoo1
 
   thickclient:
     image: ${DOCKER_REGISTRY-}thickclient
@@ -68,7 +94,7 @@ services:
     ports:
       - 5340:80
 
-  zookeeper:
+  zoo1:
     container_name: zookeeper
     image: 'bitnami/zookeeper:latest'
     ports:
