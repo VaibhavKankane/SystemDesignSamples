@@ -10,14 +10,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Grpc.AspNetCore" Version="2.51.0" />
-    <PackageReference Include="Grpc.Net.Client" Version="2.51.0" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.17.0" />
     <PackageReference Include="prometheus-net.AspNetCore" Version="8.0.0" />
   </ItemGroup>
 
   <ItemGroup>
-    <Protobuf Include="..\Protos\memory_store.proto" />
+    <ProjectReference Include="..\MemoryStore.Proto\MemoryStore.Proto.csproj" />
   </ItemGroup>
 
 </Project>

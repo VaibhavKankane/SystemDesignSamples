@@ -5,18 +5,15 @@ VisualStudioVersion = 17.4.33213.308
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MemoryStore", "MemoryStore\MemoryStore.csproj", "{03C40DD7-7402-44CF-BBB1-08B79ABD1F7A}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Protos", "Protos", "{87B285B7-FB34-4EF1-9442-F75D39AA2B64}"
-	ProjectSection(SolutionItems) = preProject
-		Protos\memory_store.proto = Protos\memory_store.proto
-	EndProjectSection
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ExternalClient", "ExternalClient\ExternalClient.csproj", "{A1CC3903-6DC1-433F-9413-281BB159707A}"
 EndProject
 Project("{E53339B2-1760-4266-BCC7-CA923CBCF16C}") = "docker-compose", "DockerCompose\docker-compose.dcproj", "{18031138-BC46-41E0-9DC3-DE3C77B09E46}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ThickClient", "ThickClient\ThickClient.csproj", "{501B43EF-4A85-49B7-A43D-CB87ABAC0750}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ThickClient", "ThickClient\ThickClient.csproj", "{501B43EF-4A85-49B7-A43D-CB87ABAC0750}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MemoryStore.Common", "MemoryStore.Common\MemoryStore.Common.csproj", "{C191EE1D-53EA-4855-8881-F0A54223C27C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MemoryStore.Common", "MemoryStore.Common\MemoryStore.Common.csproj", "{C191EE1D-53EA-4855-8881-F0A54223C27C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MemoryStore.Proto", "MemoryStore.Proto\MemoryStore.Proto.csproj", "{5FA63387-3537-4FA8-A4D0-5B71CD7BAE68}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -44,6 +41,10 @@ Global
 		{C191EE1D-53EA-4855-8881-F0A54223C27C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C191EE1D-53EA-4855-8881-F0A54223C27C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C191EE1D-53EA-4855-8881-F0A54223C27C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5FA63387-3537-4FA8-A4D0-5B71CD7BAE68}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5FA63387-3537-4FA8-A4D0-5B71CD7BAE68}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5FA63387-3537-4FA8-A4D0-5B71CD7BAE68}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5FA63387-3537-4FA8-A4D0-5B71CD7BAE68}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -23,7 +23,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Protobuf Include="..\Protos\memory_store.proto" />
     <Protobuf Include="WAL\wall_entry.proto" GrpcServices="Server" />
   </ItemGroup>
 

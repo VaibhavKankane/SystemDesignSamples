@@ -38,9 +38,11 @@ namespace MemoryStore
 
         public string Get(string key)
         {
-            var result = _store.TryGetValue(key, out string value);
-
-            return value;
+            var found = _store.TryGetValue(key, out string value);
+            if(found)
+                return value;
+            else
+                return string.Empty;
         }
 
         public MemoryStoreOperationResult Delete(string key)
