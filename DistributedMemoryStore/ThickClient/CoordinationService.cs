@@ -1,21 +1,18 @@
 ﻿using MemoryStore.Common;
 using MemoryStore.ZooKeeper;
 
-namespace MemoryStore
+namespace ThickClient
 {
     public class CoordinationService : BackgroundService
     {
-        private readonly ZooKeeperClient _zkClient;
-        private readonly ReplicaManager _replicaManager;
-        private readonly Config _config;
+        private ZooKeeperClient _zkClient;
+        private ReplicaManager _replicaManager;
 
         public CoordinationService(ZooKeeperClient zooKeeperClient,
-            ReplicaManager replicaManager,
-            Config config) 
+            ReplicaManager replicaManager) 
         {
             _zkClient = zooKeeperClient;
             _replicaManager = replicaManager;
-            _config = config;
         }
 
 
@@ -39,11 +36,9 @@ namespace MemoryStore
 
         private async Task OnConnectAsync()
         {
-            // Create persistent node to register service
+            // Initialize the replica manager to start watching for node changes.
+            // It will also create the nodes to watch if not created already
             await _replicaManager.InitAsync();
-
-            // Nominate self for leader of MemStoreService
-            await _replicaManager.NominateForElectionAsync(_config.HostPort);
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)

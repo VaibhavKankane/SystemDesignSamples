@@ -9,6 +9,8 @@ namespace MemoryStore.Common
     public static class Constants
     {
         public const string LeaderHeader = "FromLeader";
-        public const string ServiceRootNodeInZooKeeper = "/ServiceInstances";
+        public const string ServiceRootNodeInZooKeeper = "/Services";
+        public const string MemoryServiceNodeInZooKeeper = "MemoryStoreService";
+        public const string BaseAddressOfReplicaWithoutPort = "http://host.docker.internal:";
     }
 }

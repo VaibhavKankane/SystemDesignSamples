@@ -1,3 +1,5 @@
+using MemoryStore.Common;
+using MemoryStore.ZooKeeper;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Prometheus;
 using Serilog;
@@ -12,6 +14,7 @@ namespace ThickClient
         {
             var builder = WebApplication.CreateBuilder(args);
             Log.Logger = new LoggerConfiguration()
+                              .Enrich.WithProperty("InstanceId", "TC")
                               .WriteTo.Console()
                               .WriteTo.Seq("http://seq")
                               .CreateLogger();
@@ -23,11 +26,6 @@ namespace ThickClient
             var app = builder.Build();
             ConfigureApplication(app);
 
-            app.Run();
-
-            
-
-            
             app.Run();
         }
 
@@ -53,8 +51,19 @@ namespace ThickClient
             });
 
             // Add services to the container.
-            builder.Services.AddSingleton<IReplicaManager, ReplicaManager>();
+            builder.Services.AddSingleton<ReplicaManager>();
+            builder.Services.AddSingleton<IReplicaConnectionManager, ReplicaConnectionManager>();
             builder.Services.AddGrpc();
+
+            // Zookeeper
+            var config = new Config();
+            builder.Services.AddSingleton<ZooKeeperClient>(sp =>
+            {
+                return new ZooKeeperClient(config.ZookeeperConnection,
+                    sp.GetService<ILogger<ZooKeeperClient>>());
+            });
+
+            builder.Services.AddHostedService<CoordinationService>();
         }
 
         private static void ConfigureApplication(WebApplication app)

@@ -51,10 +51,13 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://*:5030;http://+:5031
+      - ZK_CONNECTION=zookeeper:2181
     build:
       # dockerignore file should be in the context directory
       context: .
       dockerfile: ../ThickClient/Dockerfile
+    depends_on: 
+      - zoo1
 
   externalclient:
      image:  ${DOCKER_REGISTRY-}externalclient
@@ -66,6 +69,8 @@ services:
      build:
       context: .
       dockerfile: ../ExternalClient/Dockerfile
+     depends_on: 
+      - zoo1
 
   prometheus:
     image: prom/prometheus

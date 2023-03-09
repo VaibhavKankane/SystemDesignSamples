@@ -8,7 +8,7 @@ using static org.apache.zookeeper.KeeperException;
 namespace MemoryStore.ZooKeeper
 {
 
-    public delegate void OnSyncConnectedHandler();
+    public delegate Task OnSyncConnectedHandler();
 
     /// <summary>
     /// Decorator over ZooKeeper class provided from the nuget
@@ -65,7 +65,12 @@ namespace MemoryStore.ZooKeeper
             return _zk.getChildrenAsync(path, watcher);
         }
 
-        public override Task process(WatchedEvent @event)
+        public Task<DataResult> GetDataAsync(string path)
+        {
+            return _zk.getDataAsync(path, false);
+        }
+
+        public override async Task process(WatchedEvent @event)
         {
             switch (@event.get_Type())
             {
@@ -74,14 +79,14 @@ namespace MemoryStore.ZooKeeper
                     {
                         case KeeperState.SyncConnected:
                             _logger.LogInformation("ZKConnectionWatcher: ZK-SyncConnected");
-                            OnSyncConnected?.Invoke();
+                            await OnSyncConnected?.Invoke();
                             break;
                         case KeeperState.Disconnected:
                             _logger.LogInformation("ZKConnectionWatcher: ZK-DisConnected");
                             break;
                         case KeeperState.Expired:
                             _logger.LogError("ZKConnectionWatcher: Session expired. Recreating the client");
-                            _zk.closeAsync(); // All ephemeral nodes will be deleted and watches will be triggered
+                            await _zk.closeAsync(); // All ephemeral nodes will be deleted and watches will be triggered
                             Connect();
                             break;
                         default:
@@ -93,8 +98,6 @@ namespace MemoryStore.ZooKeeper
                     _logger.LogInformation("ZKConnectionWatcher: ZK-event:" + @event.get_Type());
                     break;
             }
-
-            return Task.CompletedTask;
         }
     }
 }

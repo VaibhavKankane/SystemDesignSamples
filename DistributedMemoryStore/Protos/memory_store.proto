@@ -16,7 +16,8 @@ enum ErrorCode {
   NOT_FOUND = 1;
   KEY_EXISTS = 2;
   NOT_LEADER = 3;
-  ReplicationFailed = 4;
+  REPLICATION_FAILED = 4;
+  REPLICA_NOT_AVAILABLE = 5;
 }
 
 message ResponseStatus{

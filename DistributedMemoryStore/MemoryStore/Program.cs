@@ -121,10 +121,7 @@ namespace MemoryStore
                 return new ZooKeeperClient(config.ZookeeperConnection,
                     sp.GetService<ILogger<ZooKeeperClient>>());
             });
-            builder.Services.AddSingleton<INodeWatcher, ServiceNodeWatcher>();
-            builder.Services.AddSingleton<INodeWriter, ServiceNodeWriter>();
-            //builder.Services.AddSingleton<IReplicationManager, ReplicationManager>();
-            //builder.Services.AddSingleton<Coordinator>();
+            builder.Services.AddSingleton<ReplicaManager>();
 
             builder.Services.AddHostedService<CoordinationService>();
         }
