@@ -1,9 +1,9 @@
 using Google.Protobuf.WellKnownTypes;
 using MemoryStore.Common;
+using MemoryStore.Common.Zookeeper;
 using MemoryStore.RequestQueue;
 using MemoryStore.Services;
 using MemoryStore.WAL;
-using MemoryStore.ZooKeeper;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Prometheus;
 using Serilog;
@@ -121,8 +121,13 @@ namespace MemoryStore
                 return new ZooKeeperClient(config.ZookeeperConnection,
                     sp.GetService<ILogger<ZooKeeperClient>>());
             });
-            builder.Services.AddSingleton<ReplicaManager>();
-
+            builder.Services.AddSingleton<ServicesWatcher>();
+            builder.Services.AddSingleton<IReplicaManager, ReplicaManager>(sp =>
+            {
+                var watcher = sp.GetService<ServicesWatcher>();
+                var logger = sp.GetService<ILogger<ReplicaManager>>();
+                return new ReplicaManager(watcher, logger, config.HostPort);
+            });
             builder.Services.AddHostedService<CoordinationService>();
         }
     }

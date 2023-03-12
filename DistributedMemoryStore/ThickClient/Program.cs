@@ -1,5 +1,5 @@
 using MemoryStore.Common;
-using MemoryStore.ZooKeeper;
+using MemoryStore.Common.Zookeeper;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Prometheus;
 using Serilog;
@@ -51,8 +51,8 @@ namespace ThickClient
             });
 
             // Add services to the container.
-            builder.Services.AddSingleton<ReplicaManager>();
-            builder.Services.AddSingleton<IReplicaConnectionManager, ReplicaConnectionManager>();
+            builder.Services.AddSingleton<ServicesWatcher>();
+            builder.Services.AddSingleton<IReplicaManager, ReplicaManager>();
             builder.Services.AddGrpc();
 
             // Zookeeper

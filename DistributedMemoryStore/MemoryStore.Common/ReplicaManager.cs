@@ -1,138 +1,113 @@
-﻿using MemoryStore.Common;
-using MemoryStore.ZooKeeper;
+﻿using Grpc.Net.Client;
+using MemoryStore.Common;
+using MemoryStore.Common.Zookeeper;
 using Microsoft.Extensions.Logging;
-using org.apache.zookeeper;
-using static org.apache.zookeeper.ZooDefs;
-using System.Text;
-using org.apache.zookeeper.data;
-using System.IO;
-using static org.apache.zookeeper.Watcher.Event;
-using System.Collections.Concurrent;
+using static MemoryStore.MemoryStore;
 
 namespace MemoryStore.Common
 {
-    public class ReplicaManager : Watcher
+    public class ReplicaManager : IReplicaManager
     {
-        private ILogger<ReplicaManager> _logger;
-        private ZooKeeperClient _zkClient;
+        private Dictionary<string, MemoryStoreClient> _replicas;
+        private readonly ServicesWatcher _servicesWatcher;
+        private readonly ILogger<ReplicaManager> _logger;
         private readonly object _lockObject = new object();
-        private List<string> _replicas;
-        private bool _initialized = false;  // persistent nodes created + watch set
-        private string _path = $"{Constants.ServiceRootNodeInZooKeeper}/{Constants.MemoryServiceNodeInZooKeeper}";
-        private string _leader; // Even _leader can be read/write by multiple threads,
-                                // read from request processing and write from zk events
+        private MemoryStoreClient? _leader;
+        private bool _isLeader = false;
+        private readonly Random _random;
+        private readonly string _currentServingReplica;
 
-        public ReplicaManager(ZooKeeperClient zkClient, ILogger<ReplicaManager> logger)
+        public ReplicaManager(ServicesWatcher servicesWatcher, 
+            ILogger<ReplicaManager> logger,
+            string currentServingReplica = "")
         {
-            _logger = logger;
-            _zkClient = zkClient;
             _replicas = new();
-            _leader= string.Empty;
+            _servicesWatcher = servicesWatcher;
+            _logger = logger;
+            _replicas = new();
+            _leader = null;
+            _random= new Random();
+            _currentServingReplica = currentServingReplica;
         }
 
-        public async Task InitAsync()
+        public void UpdateReplicas(List<string> serviceInstances)
         {
-            /* Create Nodes
-             *    /Services[Persistent]
-             *         /MemStoreService[Persistent]
-            */
-            await CreatePersistentNode(Constants.ServiceRootNodeInZooKeeper);
-            await CreatePersistentNode(_path);
-
-            _initialized = true;
-
-            // Set watch here
-            var result = (await _zkClient.GetChildrenAsync(_path, this)).Children.OrderBy(x => x).ToList();
-
-            await ProcessChildrenAsync(result);
-        }
-
-        private async Task CreatePersistentNode(string nodeName)
-        {
-            var exists = await _zkClient.ExistsAsync(nodeName);
-            if (exists == null)
+            lock (_lockObject)
             {
-                await _zkClient.CreateAsync(nodeName, Encoding.UTF8.GetBytes("Replicas"), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
-                _logger.LogInformation("Persistent node {0} created", nodeName);
+                // remove stale clients
+                _replicas = _replicas.Where(x => serviceInstances.Contains(x.Key)).ToDictionary(y => y.Key, y => y.Value);
+
+                // add clients for new replicas
+                foreach (var hostPort in serviceInstances)
+                {
+                    if (_replicas.ContainsKey(hostPort))
+                        continue;
+                    else if (hostPort == _currentServingReplica)
+                        continue; // Dont create client for calling itself
+                    else
+                    {
+                        var channel = GrpcChannel.ForAddress(Constants.BaseAddressOfReplicaWithoutPort + hostPort);
+                        MemoryStoreClient client = new(channel);
+                        _replicas.Add(hostPort, client);
+                    }
+                }
+
+                // set client for leader
+                var leaderNode = _servicesWatcher.GetLeaderServiceInstance();
+                if(leaderNode == _currentServingReplica)
+                {
+                    _isLeader = true;
+                    _leader = null;
+                }
+                else if(leaderNode != null && _replicas.Count > 0)
+                {
+                    // just avoiding a condition when leader is not set and this callback triggered
+                    // could happen if all serviceInstances are deleted/not serving
+                    _replicas.TryGetValue(leaderNode, out _leader);
+                    _isLeader = false;
+                }
+                else
+                {
+                    _isLeader = false;
+                    _leader = null;
+                }
+                
             }
-            else
-            {
-                _logger.LogInformation("Persistent Path already exist - {0}", nodeName);
-            }
+
+            _logger.LogInformation("Replicas upated - {0}", _replicas.Count);
         }
 
-        public async Task NominateForElectionAsync(string serviceInstance)
+        public bool IsLeader()
         {
-            if (_initialized)
-            {
-                // Create Ephemeral_Sequential node
-                var instanceNode = await _zkClient.CreateAsync($"{_path}/n_", Encoding.UTF8.GetBytes(serviceInstance), Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL_SEQUENTIAL);
-                _logger.LogError("Nominate for {0}", instanceNode);
-            }
+            return _isLeader;
         }
 
-        public string GetLeaderReplica()
+        public MemoryStoreClient? GetLeaderReplica()
         {
-            // _leader will be set automatically when nodes start nominating for elections.
-            // this class is a watcher and will process children everytime for service discovery and leader
             return _leader;
         }
 
-        public override async Task process(WatchedEvent @event)
+        public MemoryStoreClient? GetReplicaForRead()
         {
-            _logger.LogInformation("ReplicaWatcher: ZK-event: {0}, state: {1}", @event.get_Type(), @event.getState());
-
-            switch (@event.get_Type())
+            lock (_lockObject)
             {
-                case Event.EventType.None: // Change in session
-                    switch (@event.getState())
-                    {
-                        case KeeperState.Disconnected:
-                            _leader = string.Empty;
-                            _logger.LogInformation("Clearing out leader ");
-                            break;
-                    }
-                    break;
-                
-                case EventType.NodeChildrenChanged:
-                    // set the watcher to this to keep receiving updates?
-                    // Dont set it to 'true' - it means the default watcher,
-                    // which is the instance passed while creating zk object
-                    var result = await _zkClient.GetChildrenAsync(_path, this);
-                    _logger.LogError("Children count = {0}", result.Children.Count);
-                    foreach (var child in result.Children)
-                    {
-                        _logger.LogError("ReplicaManager: children ==> {0}", child);
-                    }
-                    await ProcessChildrenAsync(result.Children);
+                if (_replicas.Count == 0)
+                {
+                    _logger.LogError("NO: Replicas not updated yet");
+                    return null;
+                }
 
-                    break;
-                case EventType.NodeDeleted:
-                    // This could be triggerred when the main persistent node itself is deleted
-                    _logger.LogCritical("Main zookeeper node deleted- {0}", _path);
-                    break;
-                default:
-                    break;
+                // Choose a replica at random, could be leader also
+                var index = _random.Next(0, _replicas.Count);
+                return _replicas.ElementAt(index).Value;
             }
         }
 
-        private async Task ProcessChildrenAsync(List<string> children)
+        public List<MemoryStoreClient> GetAllServingReplicas()
         {
-            if (children.Count() > 0)
+            lock(_lockObject)
             {
-                // Electing first node as the leader, getting its data
-                var leadChild = await _zkClient.GetDataAsync($"{_path}/{children.First()}");
-                _leader = Encoding.UTF8.GetString(leadChild.Data);
-
-                _logger.LogError("Leader = {0}", _leader);
-
-                // update replicas
-                lock (_lockObject)
-                {
-                    _replicas = children;
-                }
-
-                _logger.LogError("Replicas upated - {0}", _replicas.Count);
+                return _replicas.Select(x => x.Value).ToList();
             }
         }
     }

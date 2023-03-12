@@ -7,9 +7,9 @@ namespace ThickClient.Services
 {
     public class MemoryStoreClientService : MemoryStoreBase
     {
-        private readonly IReplicaConnectionManager _replicaConnectionManager;
+        private readonly IReplicaManager _replicaConnectionManager;
 
-        public MemoryStoreClientService(IReplicaConnectionManager replicaConnectionManager)
+        public MemoryStoreClientService(IReplicaManager replicaConnectionManager)
         {
             _replicaConnectionManager = replicaConnectionManager;
         }
@@ -17,7 +17,7 @@ namespace ThickClient.Services
         // Read from any replica
         public override async Task<ReadResponse> Read(ReadRequest request, ServerCallContext context)
         {
-            var client = await _replicaConnectionManager.GetReplicaForReadAsync();
+            var client = _replicaConnectionManager.GetReplicaForRead();
             if(client == null)
             {
                 return new ReadResponse()
@@ -29,7 +29,7 @@ namespace ThickClient.Services
                     }
                 };
             }
-            var response = client.Read(request);
+            var response = await client.ReadAsync(request);
             return response;
         }
 
@@ -37,7 +37,7 @@ namespace ThickClient.Services
         public override async Task<WriteResponse> Write(WriteRequest request, ServerCallContext context)
         {
             // TODO: Retry if error due to leader change in the middle of operation
-            var client = await _replicaConnectionManager.GetLeaderReplicaAsync();
+            var client = _replicaConnectionManager.GetLeaderReplica();
             if(client == null)
             {
                 return new WriteResponse()
@@ -51,7 +51,7 @@ namespace ThickClient.Services
             }
             else
             {
-                var response = client.Write(request);
+                var response = await client.WriteAsync(request);
                 return response;
             }
         }
@@ -59,7 +59,7 @@ namespace ThickClient.Services
         // Delete only from leader
         public override async Task<DeleteResponse> Delete(DeleteRequest request, ServerCallContext context)
         {
-            var client = await _replicaConnectionManager.GetLeaderReplicaAsync();
+            var client = _replicaConnectionManager.GetLeaderReplica();
             if (client == null)
             {
                 return new DeleteResponse()
@@ -73,7 +73,7 @@ namespace ThickClient.Services
             }
             else
             {
-                var response = client.Delete(request);
+                var response = await client.DeleteAsync(request);
                 return response;
             }
         }

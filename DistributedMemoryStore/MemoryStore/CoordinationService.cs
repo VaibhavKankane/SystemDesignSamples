@@ -1,19 +1,22 @@
 ﻿using MemoryStore.Common;
-using MemoryStore.ZooKeeper;
+using MemoryStore.Common.Zookeeper;
 
 namespace MemoryStore
 {
     public class CoordinationService : BackgroundService
     {
         private readonly ZooKeeperClient _zkClient;
-        private readonly ReplicaManager _replicaManager;
+        private readonly ServicesWatcher _servicesWatcher;
+        private readonly IReplicaManager _replicaManager;
         private readonly Config _config;
 
         public CoordinationService(ZooKeeperClient zooKeeperClient,
-            ReplicaManager replicaManager,
+            ServicesWatcher servicesWatcher,
+            IReplicaManager replicaManager,
             Config config) 
         {
             _zkClient = zooKeeperClient;
+            _servicesWatcher = servicesWatcher;
             _replicaManager = replicaManager;
             _config = config;
         }
@@ -24,6 +27,9 @@ namespace MemoryStore
             // configure listeners before zookeeper is connected
             _zkClient.OnSyncConnected += OnConnectAsync;
 
+            // replicaManager will keep the grpc client objects for each services Instance
+            _servicesWatcher.OnServiceInstancesUpdated += _replicaManager.UpdateReplicas;
+            
             //---
             // TODO: wait for 30 secs before connecting to zookeeper in the start
             // With current code-  it works when services restart and when one goes down and comes back AFTER 30 secs
@@ -40,10 +46,10 @@ namespace MemoryStore
         private async Task OnConnectAsync()
         {
             // Create persistent node to register service
-            await _replicaManager.InitAsync();
+            await _servicesWatcher.InitAsync();
 
             // Nominate self for leader of MemStoreService
-            await _replicaManager.NominateForElectionAsync(_config.HostPort);
+            await _servicesWatcher.NominateForElectionAsync(_config.HostPort);
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)

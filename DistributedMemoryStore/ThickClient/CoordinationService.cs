@@ -1,17 +1,20 @@
 ﻿using MemoryStore.Common;
-using MemoryStore.ZooKeeper;
+using MemoryStore.Common.Zookeeper;
 
 namespace ThickClient
 {
     public class CoordinationService : BackgroundService
     {
         private ZooKeeperClient _zkClient;
-        private ReplicaManager _replicaManager;
+        private ServicesWatcher _servicesWatcher;
+        private readonly IReplicaManager _replicaManager;
 
         public CoordinationService(ZooKeeperClient zooKeeperClient,
-            ReplicaManager replicaManager) 
+            ServicesWatcher servicesWatcher,
+            IReplicaManager replicaManager) 
         {
             _zkClient = zooKeeperClient;
+            _servicesWatcher = servicesWatcher;
             _replicaManager = replicaManager;
         }
 
@@ -20,6 +23,9 @@ namespace ThickClient
         {
             // configure listeners before zookeeper is connected
             _zkClient.OnSyncConnected += OnConnectAsync;
+
+            // replicaManager will keep the grpc client objects for each services Instance
+            _servicesWatcher.OnServiceInstancesUpdated += _replicaManager.UpdateReplicas;
 
             //---
             // TODO: wait for 30 secs before connecting to zookeeper in the start
@@ -38,7 +44,7 @@ namespace ThickClient
         {
             // Initialize the replica manager to start watching for node changes.
             // It will also create the nodes to watch if not created already
-            await _replicaManager.InitAsync();
+            await _servicesWatcher.InitAsync();
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)

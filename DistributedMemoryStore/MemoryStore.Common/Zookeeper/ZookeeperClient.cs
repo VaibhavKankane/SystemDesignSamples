@@ -5,7 +5,7 @@ using static org.apache.zookeeper.Watcher.Event;
 using Microsoft.Extensions.Logging;
 using static org.apache.zookeeper.KeeperException;
 
-namespace MemoryStore.ZooKeeper
+namespace MemoryStore.Common.Zookeeper
 {
 
     public delegate Task OnSyncConnectedHandler();
@@ -19,7 +19,7 @@ namespace MemoryStore.ZooKeeper
         private const int _sessionTimeout = 30000;
         private string _connectionString;
         private ILogger<ZooKeeperClient> _logger;
-        private ZooKeeperLibrary.ZooKeeper _zk;
+        private ZooKeeper _zk;
 
         public OnSyncConnectedHandler OnSyncConnected;
 
@@ -32,7 +32,7 @@ namespace MemoryStore.ZooKeeper
         public void Connect()
         {
             // Dont invoke from constructor, as 'this' object wont be ready
-            _zk = new ZooKeeperLibrary.ZooKeeper(_connectionString, _sessionTimeout, this);
+            _zk = new ZooKeeper(_connectionString, _sessionTimeout, this);
         }
 
         public Task<Stat> ExistsAsync(string path)
@@ -51,7 +51,7 @@ namespace MemoryStore.ZooKeeper
                 // ignore this exception
                 return path;
             }
-            catch(KeeperException ex)
+            catch (KeeperException ex)
             {
                 _logger.LogError(ex.Message);
             }
@@ -74,7 +74,7 @@ namespace MemoryStore.ZooKeeper
         {
             switch (@event.get_Type())
             {
-                case Event.EventType.None: // Change in session
+                case EventType.None: // Change in session
                     switch (@event.getState())
                     {
                         case KeeperState.SyncConnected:
