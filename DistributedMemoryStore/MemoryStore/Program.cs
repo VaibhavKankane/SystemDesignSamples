@@ -112,6 +112,9 @@ namespace MemoryStore
                 var lastSeqNumber = restore.RestoreMemoryStoreFromLog();
                 return new LamportClock(lastSeqNumber);
             });
+
+            builder.Services.AddSingleton<QueueStepAppendToLog>();
+            builder.Services.AddSingleton<QueueStepInsertInStore>();
             builder.Services.AddSingleton<IRequestProcessorQueue, RequestProcessorQueue>();
             builder.Services.AddGrpc();
 

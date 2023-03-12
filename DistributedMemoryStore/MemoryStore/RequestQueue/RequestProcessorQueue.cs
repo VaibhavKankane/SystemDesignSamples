@@ -12,16 +12,15 @@ namespace MemoryStore.RequestQueue
 
     class RequestProcessorQueue : IRequestProcessorQueue
     {
-        private readonly LamportClock _clock;
-        private readonly IWriteAheadLogger _writeAheadLogger;
-        private readonly IMemoryStore _memoryStore;
         private readonly TransformBlock<RequestQueueData, RequestQueueData> _requestQueue;
+        private readonly QueueStepAppendToLog _stepAppendToLog;
+        private readonly QueueStepInsertInStore _stepInsertInStore;
 
-        public RequestProcessorQueue(LamportClock clock, IWriteAheadLogger writeAheadLogger, IMemoryStore memoryStore)
+        public RequestProcessorQueue(QueueStepAppendToLog stepAppendToLog,
+            QueueStepInsertInStore stepInsertInStore)
         {
-            _clock = clock;
-            _writeAheadLogger = writeAheadLogger;
-            _memoryStore = memoryStore;
+            _stepAppendToLog = stepAppendToLog;
+            _stepInsertInStore = stepInsertInStore;
             _requestQueue = CreateRequestQueue();
         }
 
@@ -51,113 +50,27 @@ namespace MemoryStore.RequestQueue
         private TransformBlock<RequestQueueData, RequestQueueData> CreateRequestQueue()
         {
             // Add to WAL
-            TransformBlock<RequestQueueData, RequestQueueData> appendToWAL = GetAppendToLogFn();
+            var step1 = _stepAppendToLog.GetStep();
 
             // Insert in store
-            var insertInStore = GetInsertInStoreFn();
+            var step2 = _stepInsertInStore.GetStep();
 
             // replicate
             // TODO
 
-            ActionBlock<RequestQueueData> setResult = GetSetResultFn();
+            var setResult = QueueStepSetResult.GetStep();
 
             // create the pipeline, link next step only if no error yet
             var options = new DataflowLinkOptions() { PropagateCompletion = true };
-            appendToWAL.LinkTo(insertInStore, options);
-            insertInStore.LinkTo(setResult, options);
+            step1.LinkTo(step2, options);
+            step2.LinkTo(setResult, options);
+            
             //appendToWAL.LinkTo(insertInStore, x => !x.Status.Task.IsCompleted);
-            //[NOT Working] insertInStore.LinkTo(setResult, options);  // TODO: The predicate seems to not work consistently here.
-            // Once its set to false, it sort of always remains false
-            // and the setResult Action never gets called it it hangs.
-            // So not using predicate here, handling the TCS in the setResult Action itself
-
-            return appendToWAL;
-        }
-
-        private static ActionBlock<RequestQueueData> GetSetResultFn()
-        {
-            return new ActionBlock<RequestQueueData>(data =>
-            {
-                if (data.Status.Task.IsCompleted)
-                {
-                    return;
-                }
-                else
-                {
-                    data.Status.SetResult(new ResponseStatus()
-                    {
-                        Success = true
-                    });
-                }
-            });
-        }
-
-        private TransformBlock<RequestQueueData, RequestQueueData> GetAppendToLogFn()
-        {
-            var appendToWAL = new TransformBlock<RequestQueueData, RequestQueueData>(data =>
-            {
-                try
-                {
-                    // generate and assign sequence number
-                    data.Entry.SequenceNumber = _clock.GetNext();
-
-                    _writeAheadLogger.AppendLog(data.Entry);
-                }
-                catch (Exception)
-                {
-                    data.Status.SetResult(new ResponseStatus()
-                    {
-                        Success = false,
-                        ErrorCode = ErrorCode.Unknown
-                    });
-                }
-                return data;
-            }, new ExecutionDataflowBlockOptions
-            {
-                MaxDegreeOfParallelism = 1
-            });
-            return appendToWAL;
-        }
-
-        private TransformBlock<RequestQueueData, RequestQueueData> GetInsertInStoreFn()
-        {
-            return new TransformBlock<RequestQueueData, RequestQueueData>(data =>
-            {
-                MemoryStoreOperationResult result;
-                ErrorCode errorCode = ErrorCode.Unknown;
-                switch (data.Entry.OperaionType)
-                {
-                    case OperationType.Insert:
-                        result = _memoryStore.Add(data.Entry.Key, data.Entry.Value);
-                        if (result == MemoryStoreOperationResult.Failed_AlreadyExist)
-                            errorCode = ErrorCode.KeyExists;
-                        break;
-
-                    case OperationType.Delete:
-                        result = _memoryStore.Delete(data.Entry.Key);
-                        if (result == MemoryStoreOperationResult.Failed_NotExist)
-                            errorCode = ErrorCode.NotFound;
-                        break;
-
-                    default:
-                        result = MemoryStoreOperationResult.Failed_NotExist;
-                        break;
-                }
-
-                if (result != MemoryStoreOperationResult.Success)
-                {
-                    data.Status.SetResult(new ResponseStatus()
-                    {
-                        Success = false,
-                        ErrorCode = errorCode
-                    });
-                }
-                return data;
-
-            }, new ExecutionDataflowBlockOptions
-            {
-                MaxDegreeOfParallelism = 1
-            });
+            // Not using predicate style here to link the steps
+            // In that, its important to handle all cases so that req is not left in the queue
+            // If for any case, pipeline is not sure how to pass ahead- it will hang
+            // Instad, the last step has ActionBlock that handles the case if the task is already completed
+            return step1;
         }
     }
 }
