@@ -4,7 +4,8 @@
     {
         MemoryStoreOperationResult Add(string key, string value);
 
-        MemoryStoreOperationResult Update(string key, string newValue, string oldValue);
+        // Keeping it simple with only read, write and delete
+        //MemoryStoreOperationResult Update(string key, string newValue, string oldValue);
 
         string Get(string key);
 

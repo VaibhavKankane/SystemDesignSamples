@@ -7,11 +7,13 @@
     {
         public WALEntry Entry { get; set; }
         public TaskCompletionSource<ResponseStatus> Status { get; set; }
+        public bool FromLeader { get; set; }
 
         public RequestQueueData()
         {
             Entry = new WALEntry();
             Status = new TaskCompletionSource<ResponseStatus>();
+            FromLeader = false;
         }
     }
 }

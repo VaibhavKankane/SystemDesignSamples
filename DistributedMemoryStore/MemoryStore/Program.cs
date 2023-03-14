@@ -115,6 +115,7 @@ namespace MemoryStore
 
             builder.Services.AddSingleton<QueueStepAppendToLog>();
             builder.Services.AddSingleton<QueueStepInsertInStore>();
+            builder.Services.AddSingleton<QueueStepReplicate>();
             builder.Services.AddSingleton<IRequestProcessorQueue, RequestProcessorQueue>();
             builder.Services.AddGrpc();
 
